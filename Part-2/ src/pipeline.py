@@ -9,7 +9,7 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, f1_score
 import pandas as pd
 import numpy as np
-from custom_models import logistic_regression_gradient_descent, predict_logistic_regression, evaluate_logistic_regression
+from custom_models import logistic_regression_gradient_descent, evaluate_logistic_regression
 
 def create_pipeline():
     numeric_features = ['AGE', 'BILL_AMT1', 'BILL_AMT2', 'BILL_AMT3', 
@@ -34,7 +34,7 @@ def create_pipeline():
     
     return preprocessor
 
-def train_and_evaluate_models(X, y):
+def  train_and_evaluate_models(X, y):
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
 
@@ -87,4 +87,4 @@ def train_and_evaluate_models(X, y):
         'Test F1': custom_results['F1 Test']
     })
 
-    return pd.DataFrame(results)
+    return pd.DataFrame(results), X_train_transformed, X_val_transformed, X_test_transformed, y_train, y_val, y_test
