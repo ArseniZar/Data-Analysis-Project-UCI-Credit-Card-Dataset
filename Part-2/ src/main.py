@@ -1,11 +1,9 @@
 from pathlib import Path
 from data_loader import DataLoader
 from save_stats import save_stats_to_csv
-from pipeline import train_and_evaluate_models, create_pipeline
-from custom_models import (linear_regression_closed_form,evaluate_linear_regression,train_pytorch_model)
-from sklearn.linear_model import LinearRegression
+from pipeline import train_and_evaluate_models, train_and_evaluate_regression
+from custom_models import train_pytorch_model
 import pandas as pd
-import numpy as np
 import torch
 
 
@@ -18,7 +16,6 @@ def main():
     data = loader.data
     print("Missing values in data:\n", data.isna().sum())
 
-   
     X_class = data.drop(columns=["ID", "default.payment.next.month"])
     y_class = data["default.payment.next.month"]
     (
@@ -30,6 +27,8 @@ def main():
         y_val,
         y_test,
     ) = train_and_evaluate_models(X_class, y_class)
+
+    # Regression
 
     # Train PyTorch model on CPU and GPU (if available)
     if torch.cuda.is_available():
@@ -65,65 +64,18 @@ def main():
         elif device == "cuda":
             time_gpu = results_pytorch["training_time"]
 
+
     if torch.cuda.is_available():
         print(f"Training time on CPU: {time_cpu:.2f} seconds")
         print(f"Training time on GPU: {time_gpu:.2f} seconds")
         print(f"Speedup: {time_cpu / time_gpu:.2f}x")
 
-    # Regression
+
+
     X_reg = data.drop(columns=["ID", "LIMIT_BAL", "default.payment.next.month"])
     y_reg = data["LIMIT_BAL"]
-    from sklearn.model_selection import train_test_split
+    results_reg = train_and_evaluate_regression(X_reg, y_reg)
 
-    X_reg_train, X_reg_temp, y_reg_train, y_reg_temp = train_test_split(
-        X_reg, y_reg, test_size=0.3, random_state=42
-    )
-    X_reg_val, X_reg_test, y_reg_val, y_reg_test = train_test_split(
-        X_reg_temp, y_reg_temp, test_size=0.5, random_state=42
-    )
-
-    preprocessor = create_pipeline()
-    X_reg_train_transformed = preprocessor.fit_transform(X_reg_train).toarray()
-    X_reg_val_transformed = preprocessor.transform(X_reg_val).toarray()
-    X_reg_test_transformed = preprocessor.transform(X_reg_test).toarray()
-
-    w_reg = linear_regression_closed_form(X_reg_train_transformed, y_reg_train.values)
-    custom_reg_results = evaluate_linear_regression(
-        X_reg_train_transformed,
-        y_reg_train.values,
-        X_reg_val_transformed,
-        y_reg_val.values,
-        X_reg_test_transformed,
-        y_reg_test.values,
-        w_reg,
-    )
-
-    model_sk_reg = LinearRegression()
-    model_sk_reg.fit(X_reg_train_transformed, y_reg_train)
-    y_train_pred_sk = model_sk_reg.predict(X_reg_train_transformed)
-    y_val_pred_sk = model_sk_reg.predict(X_reg_val_transformed)
-    y_test_pred_sk = model_sk_reg.predict(X_reg_test_transformed)
-
-    mse_train_sk = np.mean((y_reg_train - y_train_pred_sk) ** 2)
-    mse_val_sk = np.mean((y_reg_val - y_val_pred_sk) ** 2)
-    mse_test_sk = np.mean((y_reg_test - y_test_pred_sk) ** 2)
-
-    results_reg = pd.DataFrame(
-        [
-            {
-                "Model": "Custom Linear Regression",
-                "MSE Train": custom_reg_results["MSE Train"],
-                "MSE Val": custom_reg_results["MSE Val"],
-                "MSE Test": custom_reg_results["MSE Test"],
-            },
-            {
-                "Model": "SKLearn Linear Regression",
-                "MSE Train": mse_train_sk,
-                "MSE Val": mse_val_sk,
-                "MSE Test": mse_test_sk,
-            },
-        ]
-    )
 
     Path("Part-2/results").mkdir(exist_ok=True)
     filename_class = Path("Part-2/results") / "classification_results.csv"

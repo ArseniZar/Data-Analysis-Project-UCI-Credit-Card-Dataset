@@ -13,14 +13,6 @@ import time
 def sigmoid(z: np.ndarray) -> np.ndarray:
     return 1 / (1 + np.exp(-np.clip(z, -500, 500)))
 
-def binary_cross_entropy(y_true: np.ndarray, y_pred: np.ndarray, weights: np.ndarray = None) -> float:
-    epsilon = 1e-15
-    y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
-    loss = -(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
-    if weights is not None:
-        loss = loss * weights
-    return np.mean(loss)
-
 def logistic_regression_gradient_descent(X: np.ndarray, y: np.ndarray, learning_rate: float = 0.01, 
                                         epochs: int = 100, batch_size: int = 64) -> np.ndarray:
     X_b = np.c_[np.ones((X.shape[0], 1)), X]
