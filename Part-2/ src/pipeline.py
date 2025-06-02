@@ -145,10 +145,10 @@ def train_and_evaluate_models(X, y):
 
 def train_and_evaluate_regression(x_reg, y_reg):
 
-    X_reg_train, X_reg_temp, y_train, y_reg_temp = train_test_split(
+    X_reg_train, X_reg_temp, y_reg_train, y_reg_temp = train_test_split(
         x_reg, y_reg, test_size=0.3, random_state=42
     )
-    X_reg_val, X_reg_test, y_val, y_test = train_test_split(
+    X_reg_val, X_reg_test, y_reg_val, y_reg_test = train_test_split(
         X_reg_temp, y_reg_temp, test_size=0.5, random_state=42
     )
 
@@ -158,14 +158,14 @@ def train_and_evaluate_regression(x_reg, y_reg):
     X_test_transformed = preprocessor.transform(X_reg_test).toarray()
 
     results = []
-    w_reg = linear_regression_closed_form(X_train_transformed, y_train.values)
+    w_reg = linear_regression_closed_form(X_train_transformed, y_reg_train.values)
     custom_reg_results = evaluate_linear_regression(
         X_train_transformed,
-        y_train.values,
+        y_reg_train.values,
         X_val_transformed,
-        y_val.values,
+        y_reg_val.values,
         X_test_transformed,
-        y_test.values,
+        y_reg_test.values,
         w_reg,
     )
     results.append(
@@ -177,13 +177,13 @@ def train_and_evaluate_regression(x_reg, y_reg):
         }
     )
     model_sk_reg = LinearRegression()
-    model_sk_reg.fit(X_train_transformed, y_train)
+    model_sk_reg.fit(X_train_transformed, y_reg_train)
     y_train_pred_sk = model_sk_reg.predict(X_train_transformed)
     y_val_pred_sk = model_sk_reg.predict(X_val_transformed)
     y_test_pred_sk = model_sk_reg.predict(X_test_transformed)
-    mse_train_sk = np.mean((y_train - y_train_pred_sk) ** 2)
-    mse_val_sk = np.mean((y_val - y_val_pred_sk) ** 2)
-    mse_test_sk = np.mean((y_test - y_test_pred_sk) ** 2)
+    mse_train_sk = np.mean((y_reg_train - y_train_pred_sk) ** 2)
+    mse_val_sk = np.mean((y_reg_val - y_val_pred_sk) ** 2)
+    mse_test_sk = np.mean((y_reg_test - y_test_pred_sk) ** 2)
     results.append(
         {
             "Model": "SKLearn Linear Regression",
