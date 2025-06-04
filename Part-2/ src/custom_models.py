@@ -14,7 +14,7 @@ def sigmoid(z: np.ndarray) -> np.ndarray:
     return 1 / (1 + np.exp(-np.clip(z, -500, 500)))
 
 def logistic_regression_gradient_descent(X: np.ndarray, y: np.ndarray, learning_rate: float = 0.01, 
-                                        epochs: int = 100, batch_size: int = 64) -> np.ndarray:
+                                        epochs: int = 100, batch_size: int = 64, reg_lambda: float = 0.0) -> np.ndarray:
     X_b = np.c_[np.ones((X.shape[0], 1)), X]
     n, p = X_b.shape                
     w = np.zeros(p)
@@ -31,6 +31,8 @@ def logistic_regression_gradient_descent(X: np.ndarray, y: np.ndarray, learning_
             z = X_batch @ w
             y_pred = sigmoid(z)
             grad = (X_batch.T @ ((y_pred - y_batch) * w_batch)) / X_batch.shape[0]
+            if reg_lambda > 0:  # Добавляем L2 регуляризацию
+                grad[1:] += reg_lambda * w[1:]  # Исключаем bias
             w -= learning_rate * grad
     return w
 
@@ -62,6 +64,37 @@ def linear_regression_closed_form(X: np.ndarray, y: np.ndarray) -> np.ndarray:
     X_b = np.c_[np.ones((X.shape[0], 1)), X]
     w = np.linalg.pinv(X_b.T @ X_b) @ X_b.T @ y
     return w
+
+def linear_regression_gradient_descent(X_train: np.ndarray, y_train: np.ndarray, 
+                                       X_val: np.ndarray, y_val: np.ndarray, 
+                                       learning_rate: float = 0.01, epochs: int = 100, 
+                                       batch_size: int = 64, reg_lambda: float = 0.0):
+    X_train_b = np.c_[np.ones((X_train.shape[0], 1)), X_train]
+    X_val_b = np.c_[np.ones((X_val.shape[0], 1)), X_val]
+    n, p = X_train_b.shape
+    w = np.zeros(p)
+    train_costs = []
+    val_costs = []
+    for epoch in range(epochs):
+        indices = np.random.permutation(n)
+        X_shuffled = X_train_b[indices]
+        y_shuffled = y_train[indices]
+        for i in range(0, n, batch_size):
+            X_batch = X_shuffled[i:i + batch_size]
+            y_batch = y_shuffled[i:i + batch_size]
+            y_pred = X_batch @ w
+            grad = (X_batch.T @ (y_pred - y_batch)) / X_batch.shape[0]
+            if reg_lambda > 0:  # Добавляем L2 регуляризацию
+                grad[1:] += reg_lambda * w[1:]  # Исключаем bias
+            w -= learning_rate * grad
+        # Считаем стоимость для train и val
+        y_train_pred = X_train_b @ w
+        train_cost = np.mean((y_train - y_train_pred) ** 2)
+        train_costs.append(train_cost)
+        y_val_pred = X_val_b @ w
+        val_cost = np.mean((y_val - y_val_pred) ** 2)
+        val_costs.append(val_cost)
+    return w, train_costs, val_costs
 
 def predict_linear_regression(X: np.ndarray, w: np.ndarray) -> np.ndarray:
     X_b = np.c_[np.ones((X.shape[0], 1)), X]

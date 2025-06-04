@@ -6,7 +6,6 @@ from custom_models import train_pytorch_model
 import pandas as pd
 import torch
 
-
 def main():
     loader = DataLoader("data/UCI_Credit_Card.csv")
     if loader.data is None:
@@ -28,8 +27,6 @@ def main():
         y_test,
     ) = train_and_evaluate_models(X_class, y_class)
 
-    # Regression
-
     # Train PyTorch model on CPU and GPU (if available)
     if torch.cuda.is_available():
         devices = ["cpu", "cuda"]
@@ -49,6 +46,10 @@ def main():
         )
         pytorch_row = {
             "Model": f"PyTorch Logistic Regression ({device})",
+            "CV Accuracy Mean": None,  # Добавлено для согласованности с другими моделями
+            "CV Accuracy Std": None,
+            "CV F1 Mean": None,
+            "CV F1 Std": None,
             "Train Accuracy": results_pytorch["Accuracy Train"],
             "Train F1": results_pytorch["F1 Train"],
             "Validation Accuracy": results_pytorch["Accuracy Val"],
@@ -64,18 +65,14 @@ def main():
         elif device == "cuda":
             time_gpu = results_pytorch["training_time"]
 
-
     if torch.cuda.is_available():
         print(f"Training time on CPU: {time_cpu:.2f} seconds")
         print(f"Training time on GPU: {time_gpu:.2f} seconds")
         print(f"Speedup: {time_cpu / time_gpu:.2f}x")
 
-
-
     X_reg = data.drop(columns=["ID", "LIMIT_BAL", "default.payment.next.month"])
     y_reg = data["LIMIT_BAL"]
     results_reg = train_and_evaluate_regression(X_reg, y_reg)
-
 
     Path("Part-2/results").mkdir(exist_ok=True)
     filename_class = Path("Part-2/results") / "classification_results.csv"
@@ -90,7 +87,6 @@ def main():
     print(results_df_class)
     print("\nRegression results table:")
     print(results_reg)
-
 
 if __name__ == "__main__":
     main()
