@@ -15,6 +15,7 @@ def sigmoid(z: np.ndarray) -> np.ndarray:
 
 def logistic_regression_gradient_descent(X: np.ndarray, y: np.ndarray, learning_rate: float = 0.01, 
                                         epochs: int = 100, batch_size: int = 64, reg_lambda: float = 0.0) -> np.ndarray:
+    print(f"Training custom logistic regression with reg_lambda={reg_lambda}...")
     X_b = np.c_[np.ones((X.shape[0], 1)), X]
     n, p = X_b.shape                
     w = np.zeros(p)
@@ -31,9 +32,11 @@ def logistic_regression_gradient_descent(X: np.ndarray, y: np.ndarray, learning_
             z = X_batch @ w
             y_pred = sigmoid(z)
             grad = (X_batch.T @ ((y_pred - y_batch) * w_batch)) / X_batch.shape[0]
-            if reg_lambda > 0:  # Добавляем L2 регуляризацию
-                grad[1:] += reg_lambda * w[1:]  # Исключаем bias
+            if reg_lambda > 0:  # L2 regularization
+                grad[1:] += reg_lambda * w[1:]  # Exclude bias
             w -= learning_rate * grad
+    print("Custom logistic regression training completed.")
+    print(f"Final weights for logistic regression (reg_lambda={reg_lambda}): {w}")
     return w
 
 def predict_logistic_regression(X: np.ndarray, w: np.ndarray) -> np.ndarray:
@@ -69,6 +72,7 @@ def linear_regression_gradient_descent(X_train: np.ndarray, y_train: np.ndarray,
                                        X_val: np.ndarray, y_val: np.ndarray, 
                                        learning_rate: float = 0.01, epochs: int = 100, 
                                        batch_size: int = 64, reg_lambda: float = 0.0):
+    print(f"Training custom linear regression with reg_lambda={reg_lambda}...")
     X_train_b = np.c_[np.ones((X_train.shape[0], 1)), X_train]
     X_val_b = np.c_[np.ones((X_val.shape[0], 1)), X_val]
     n, p = X_train_b.shape
@@ -84,16 +88,17 @@ def linear_regression_gradient_descent(X_train: np.ndarray, y_train: np.ndarray,
             y_batch = y_shuffled[i:i + batch_size]
             y_pred = X_batch @ w
             grad = (X_batch.T @ (y_pred - y_batch)) / X_batch.shape[0]
-            if reg_lambda > 0:  # Добавляем L2 регуляризацию
-                grad[1:] += reg_lambda * w[1:]  # Исключаем bias
+            if reg_lambda > 0:  # L2 regularization
+                grad[1:] += reg_lambda * w[1:]  # Exclude bias
             w -= learning_rate * grad
-        # Считаем стоимость для train и val
         y_train_pred = X_train_b @ w
         train_cost = np.mean((y_train - y_train_pred) ** 2)
         train_costs.append(train_cost)
         y_val_pred = X_val_b @ w
         val_cost = np.mean((y_val - y_val_pred) ** 2)
         val_costs.append(val_cost)
+    print("Custom linear regression training completed.")
+    print(f"Final weights for linear regression (reg_lambda={reg_lambda}): {w}")
     return w, train_costs, val_costs
 
 def predict_linear_regression(X: np.ndarray, w: np.ndarray) -> np.ndarray:
@@ -133,6 +138,7 @@ def train_pytorch_model(X_train: np.ndarray, y_train: np.ndarray,
                        X_test: np.ndarray, y_test: np.ndarray, 
                        device: str = 'cpu', batch_size: int = 64, 
                        num_epochs: int = 100, lr: float = 0.01) -> dict:
+    print(f"Training PyTorch model on {device}...")
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.float32).view(-1, 1)
     X_val_tensor = torch.tensor(X_val, dtype=torch.float32)
@@ -157,6 +163,7 @@ def train_pytorch_model(X_train: np.ndarray, y_train: np.ndarray,
             loss.backward()
             optimizer.step()
     training_time = time.time() - start_time
+    print(f"PyTorch model training completed on {device}.")
     def evaluate(loader):
         model.eval()
         y_true, y_pred = [], []
