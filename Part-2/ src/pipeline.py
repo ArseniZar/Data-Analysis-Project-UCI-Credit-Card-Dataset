@@ -2,7 +2,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import train_test_split, StratifiedKFold, KFold
+from sklearn.model_selection import train_test_split, StratifiedKFold, KFold, GridSearchCV
 from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge, Lasso
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
@@ -20,6 +20,11 @@ from custom_models import (
 )
 import matplotlib.pyplot as plt
 from pathlib import Path
+from imblearn.over_sampling import SMOTE  # Добавлено для 3.4
+
+# ======================================
+# Часть II: Базовые модели и функции
+# ======================================
 
 def create_pipeline():
     numeric_features = [
@@ -71,7 +76,13 @@ def create_pipeline():
 
     return preprocessor
 
+# ======================================
+# Часть III: Оптимизация
+# ======================================
+
+# 3.1 Cross-validation
 def perform_cv(model, X, y, cv=3, is_classification=True):
+    print(f"Начинаем {cv}-кратную кросс-валидацию для модели: {model}")
     if is_classification:
         skf = StratifiedKFold(n_splits=cv)
     else:
@@ -106,14 +117,18 @@ def perform_cv(model, X, y, cv=3, is_classification=True):
         std_acc = np.std([s['accuracy'] for s in scores])
         mean_f1 = np.mean([s['f1'] for s in scores])
         std_f1 = np.std([s['f1'] for s in scores])
+        print(f"Кросс-валидация завершена для {model}: Accuracy Mean={mean_acc:.4f}, F1 Mean={mean_f1:.4f}")
         return {'CV Accuracy Mean': mean_acc, 'CV Accuracy Std': std_acc, 
                 'CV F1 Mean': mean_f1, 'CV F1 Std': std_f1}
     else:
         mean_mse = np.mean([s['mse'] for s in scores])
         std_mse = np.std([s['mse'] for s in scores])
+        print(f"Кросс-валидация завершена для {model}: MSE Mean={mean_mse:.4f}")
         return {'CV MSE Mean': mean_mse, 'CV MSE Std': std_mse}
 
+# Часть II и 3.1, 3.3: Обучение моделей классификации
 def train_and_evaluate_models(X, y):
+    print("Начинаем обучение и оценку моделей классификации...")
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
 
@@ -133,6 +148,7 @@ def train_and_evaluate_models(X, y):
     results = []
 
     for model_name, model in models:
+        print(f"Обучаем модель: {model_name}")
         if model == "custom_logistic":
             # Без регуляризации
             cv_results = perform_cv(model, X_train, y_train)
@@ -155,7 +171,7 @@ def train_and_evaluate_models(X, y):
                 "Test F1": custom_results['F1 Test'],
             })
         elif model_name == "Custom Logistic Regression (L2)":
-            # С L2 регуляризацией
+            # С L2 регуляризацией (3.3)
             cv_results = perform_cv(model, X_train, y_train)
             w = logistic_regression_gradient_descent(X_train_transformed, y_train.values, reg_lambda=0.01)
             custom_results = evaluate_logistic_regression(
@@ -195,7 +211,9 @@ def train_and_evaluate_models(X, y):
                 "Test Accuracy": accuracy_score(y_test, test_pred),
                 "Test F1": f1_score(y_test, test_pred),
             })
+        print(f"Модель {model_name} обучена и оценена.")
 
+    print("Обучение и оценка моделей классификации завершены.")
     return (
         pd.DataFrame(results),
         X_train_transformed,
@@ -206,7 +224,9 @@ def train_and_evaluate_models(X, y):
         y_test,
     )
 
+# Часть II и 3.2, 3.3: Обучение моделей регрессии
 def train_and_evaluate_regression(x_reg, y_reg):
+    print("Начинаем обучение и оценку моделей регрессии...")
     X_reg_train, X_reg_temp, y_reg_train, y_reg_temp = train_test_split(
         x_reg, y_reg, test_size=0.3, random_state=42
     )
@@ -239,7 +259,7 @@ def train_and_evaluate_regression(x_reg, y_reg):
         "MSE Test": custom_reg_results["MSE Test"],
     })
 
-    # Custom Linear Regression (L2)
+    # Custom Linear Regression (L2) (3.3)
     w_l2, train_costs_l2, val_costs_l2 = linear_regression_gradient_descent(
         X_train_transformed, y_reg_train.values, X_val_transformed, y_reg_val.values, reg_lambda=0.01
     )
@@ -257,7 +277,8 @@ def train_and_evaluate_regression(x_reg, y_reg):
         "MSE Test": custom_reg_results_l2["MSE Test"],
     })
 
-    # Построение графика сходимости
+    # 3.2: Построение графика сходимости
+    print("Строим график сходимости для Custom Linear Regression...")
     plt.figure(figsize=(10, 6))
     plt.plot(range(len(train_costs)), train_costs, label='Train MSE (no reg)')
     plt.plot(range(len(val_costs)), val_costs, label='Val MSE (no reg)')
@@ -269,6 +290,7 @@ def train_and_evaluate_regression(x_reg, y_reg):
     plt.title('График сходимости для Custom Linear Regression')
     plt.savefig('Part-2/results/convergence_plot.png')
     plt.close()
+    print("График сходимости сохранен в 'Part-2/results/convergence_plot.png'.")
 
     # Sklearn Linear Regression
     model_sk_reg = LinearRegression()
@@ -289,7 +311,7 @@ def train_and_evaluate_regression(x_reg, y_reg):
         "MSE Test": mse_test_sk,
     })
 
-    # Ridge Regression
+    # Ridge Regression (3.3)
     model_ridge = Ridge(alpha=1.0)
     model_ridge.fit(X_train_transformed, y_reg_train)
     y_train_pred_ridge = model_ridge.predict(X_train_transformed)
@@ -308,7 +330,7 @@ def train_and_evaluate_regression(x_reg, y_reg):
         "MSE Test": mse_test_ridge,
     })
 
-    # Lasso Regression
+    # Lasso Regression (3.3)
     model_lasso = Lasso(alpha=0.1)
     model_lasso.fit(X_train_transformed, y_reg_train)
     y_train_pred_lasso = model_lasso.predict(X_train_transformed)
@@ -327,4 +349,92 @@ def train_and_evaluate_regression(x_reg, y_reg):
         "MSE Test": mse_test_lasso,
     })
 
+    print("Обучение и оценка моделей регрессии завершены.")
     return pd.DataFrame(results)
+
+# 3.4: Балансировка данных с SMOTE
+def train_and_evaluate_models_balanced(X, y):
+    print("Начинаем обучение и оценку моделей на сбалансированных данных (SMOTE)...")
+    X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+
+    preprocessor = create_pipeline()
+    X_train_transformed = preprocessor.fit_transform(X_train).toarray()
+    X_val_transformed = preprocessor.transform(X_val).toarray()
+    X_test_transformed = preprocessor.transform(X_test).toarray()
+
+    # Применяем SMOTE
+    smote = SMOTE(random_state=42)
+    print("Применяем SMOTE для балансировки обучающей выборки...")
+    X_train_res, y_train_res = smote.fit_resample(X_train_transformed, y_train)
+    print(f"Размер обучающей выборки после SMOTE: {X_train_res.shape}")
+
+    models = [
+        ("Logistic Regression", LogisticRegression(max_iter=1000)),
+        ("Decision Tree", DecisionTreeClassifier(random_state=42)),
+        ("SVM", SVC(kernel="rbf", random_state=42)),
+        ("Custom Logistic Regression", "custom_logistic"),
+    ]
+
+    results = []
+
+    for model_name, model in models:
+        print(f"Обучаем модель на сбалансированных данных: {model_name}")
+        if model == "custom_logistic":
+            w = logistic_regression_gradient_descent(X_train_res, y_train_res, reg_lambda=0.0)
+            custom_results = evaluate_logistic_regression(
+                X_train_res, y_train_res, X_val_transformed, y_val.values, 
+                X_test_transformed, y_test.values, w
+            )
+            results.append({
+                "Model": "Custom Logistic Regression (Balanced)",
+                "Train Accuracy": custom_results['Accuracy Train'],
+                "Train F1": custom_results['F1 Train'],
+                "Validation Accuracy": custom_results['Accuracy Val'],
+                "Validation F1": custom_results['F1 Val'],
+                "Test Accuracy": custom_results['Accuracy Test'],
+                "Test F1": custom_results['F1 Test'],
+            })
+        else:
+            model.fit(X_train_res, y_train_res)
+            train_pred = model.predict(X_train_res)
+            val_pred = model.predict(X_val_transformed)
+            test_pred = model.predict(X_test_transformed)
+            results.append({
+                "Model": f"{model_name} (Balanced)",
+                "Train Accuracy": accuracy_score(y_train_res, train_pred),
+                "Train F1": f1_score(y_train_res, train_pred),
+                "Validation Accuracy": accuracy_score(y_val, val_pred),
+                "Validation F1": f1_score(y_val, val_pred),
+                "Test Accuracy": accuracy_score(y_test, test_pred),
+                "Test F1": f1_score(y_test, test_pred),
+            })
+        print(f"Модель {model_name} (Balanced) обучена и оценена.")
+
+    print("Обучение и оценка моделей на сбалансированных данных завершены.")
+    return pd.DataFrame(results)
+
+# 3.5: Оптимизация гиперпараметров
+def tune_model(model, param_grid, X_train, y_train):
+    print(f"Начинаем оптимизацию гиперпараметров для модели: {model}")
+    grid_search = GridSearchCV(model, param_grid, cv=3, scoring='f1', n_jobs=-1)
+    grid_search.fit(X_train, y_train)
+    print(f"Оптимизация завершена. Лучшие параметры: {grid_search.best_params_}, Лучший F1: {grid_search.best_score_:.4f}")
+    return grid_search.best_params_, grid_search.best_score_
+
+def tune_decision_tree(X_train, y_train):
+    param_grid = {
+        'max_depth': [3, 5, 7, 10],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
+    }
+    dt = DecisionTreeClassifier(random_state=42)
+    return tune_model(dt, param_grid, X_train, y_train)
+
+def tune_svc(X_train, y_train):
+    param_grid = {
+        'C': [0.1, 1, 10],
+        'kernel': ['rbf', 'linear']
+    }
+    svc = SVC(random_state=42)
+    return tune_model(svc, param_grid, X_train, y_train)
